@@ -1,5 +1,5 @@
 provider "huaweicloud" {
-  region      = var.region
+  region = var.region
   # domain_name = "my-account-name"
   # access_key  = "my-access-key"
   # secret_key  = "my-secret-key"
@@ -86,9 +86,8 @@ output "instance_eip" {
 # https://www.terraform.io/docs/providers/huaweicloud/r/compute_keypair_v2.html
 resource "huaweicloud_compute_keypair_v2" "kp_1" {
   name       = "keypar_importada"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII2rHA/dIFWAciVKLq1VFcF612dsgh8gwZdZgznhTa4N huawei-tf-ecs"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQChvo3WqxS+HzD2XaanROCzomRPzgkVtpjxmD9l3zQeAUCFghbwD07/DWJVVWoSWi1bYzgET5tft5YxnBXhnnFyljMUnpbHkMht1uHThVPRQkUAuE/JleLN4RGLa4M9cMKmcLqXXjGWKYZu2DhATOx92N3PFM7ij2xg0QmoPl+Qy4x1qotRzMd3dbjsRSE47B2ol6AXDvfdvu+FsBfP1ORZ3zVV6gWb+hjcOzhyAzxIX/fi7fpd/mGU4vsoNM3R6o07qrOELM9xqNRdJJGCDp/AGOSNzphNNIIIhXiI1K0KhMPSvU2kL464gSNRkQf37spSWerx4sqxxQre9XfdkRGpuMJGhrVur3kUjaTOWzruAURmurCBt+ZYbUvqAyGLX0L6fU9hBtG8fK59+rLK8SOYXCnQN9A6XGz9WN5iz3VEMG6qd2gtGNqtu8fT7sTZTCB+fhFUyg9ez2j+Z5bwmRTSUAK7R1tJ0zGvM6Gwcj+kYaT6jXEsoCXYgJs5pRcX6ExHQ3HtHy6V+BWcn4dU2zhADsuH9M2hl77Cin4l/vhLP1TigdBhthw1OTkLJg4FbfOEqDSmbX5lAzSXfnYSWg7I1lQSsFLMAF5fEqbYe5yIkpV64cRA27TpVKle52MiIP8al2lTjtyzKCLNNG4XV2JQ57OVv2wzHwYpyaYauQC+SQ=="
 }
-
 
 
 # https://www.terraform.io/docs/providers/huaweicloud/r/compute_instance_v2.html
@@ -97,8 +96,8 @@ resource "huaweicloud_compute_keypair_v2" "kp_1" {
 resource "huaweicloud_compute_instance_v2" "test-server-vpc" {
   name = "test-server-terraform-vpc"
   # image_id = "cbe0df31-1150-488a-a9b2-612c745e1be0"
-  image_name        = "Ubuntu 18.04 server 64bit"
-  flavor_name       = "s3.small.1"
+  image_name        = "Ubuntu 20.04 server 64bit"
+  flavor_name       = "c3.large.2"
   availability_zone = "${var.region}a"
   key_pair          = huaweicloud_compute_keypair_v2.kp_1.name
   security_groups   = [huaweicloud_networking_secgroup_v2.secgroup_http_and_ssh.name]
@@ -137,5 +136,39 @@ resource "huaweicloud_vpc_eip_v1" "eip_1" {
     charge_mode = "traffic" # cobrança por tráfego de dados ("traffic") ou reserva de banda ("bandwidth")
     share_type  = "PER"     # Banda dedicada ("PER") ou compartilhada ("WHOLE") com outras instâncias
     size        = 1         # Banda em Mbps (de 1 up até 300)
+  }
+}
+
+
+resource "null_resource" "preparation" {
+
+  connection {
+    host        = huaweicloud_vpc_eip_v1.eip_1.address # don't forget  this option.
+    user        = "root"
+    timeout     = "30s"
+    private_key = file("/Users/naach/.ssh/huawei-terraform-ecs_rsa")
+    agent       = false
+  }
+
+  # provisioner "file" {
+  #   source      = "./tfvars"
+  #   destination = "/tmp/"
+  # }
+
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir /root/arangodb2",
+      # "cd arangodb/",
+      # "curl -OL https://download.arangodb.com/arangodb37/DEBIAN/Release.key",
+      # "sudo apt-key add - < Release.key",
+      # "echo 'deb https://download.arangodb.com/arangodb37/DEBIAN/ /' | sudo tee /etc/apt/sources.list.d/arangodb.list",
+      # "sudo apt-get install apt-transport-https",
+      # "sudo apt-get update",
+      # "sudo apt-get install arangodb3=3.7.3-1",
+      # "sudo apt-get install arangodb3-dbg=3.7.3-1",
+    ]
+  }
+  provisioner "local-exec" {
+    command = "echo ${huaweicloud_vpc_eip_v1.eip_1.address} >> ips.txt"
   }
 }
