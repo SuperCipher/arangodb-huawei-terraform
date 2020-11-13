@@ -6,17 +6,17 @@ provider "huaweicloud" {
 }
 
 
-variable "vpc_cidr" { # Faixa de endereços da VPC
+variable "vpc_cidr" {
   default = "10.70.0.0/16"
 }
 
-variable "region" { # Faixa de endereços da VPC
+variable "region" {
   default = "ap-southeast-2"
 }
 
 # https://www.terraform.io/docs/providers/huaweicloud/r/vpc_v1.html
 resource "huaweicloud_vpc_v1" "vpc_single_instance_1" {
-  # region = # opcional; assumido a partir dos parâmetros do provider
+  # region = 
   name = "vpc_single_instance_1"
   cidr = var.vpc_cidr
 }
