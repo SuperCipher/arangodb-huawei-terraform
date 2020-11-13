@@ -24,6 +24,7 @@ website/node_modules
 *.test
 *.iml
 credential.sh
+.terraform.tfstate.lock.info
 
 website/vendor
 
