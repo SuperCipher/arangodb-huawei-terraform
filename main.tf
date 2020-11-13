@@ -5,19 +5,6 @@ provider "huaweicloud" {
   # secret_key  = "my-secret-key"
 }
 
-# # Create a VPC
-# resource "huaweicloud_vpc" "example" {
-#   name = "my_vpc"
-#   cidr = "192.168.0.0/30"
-# }
-
-
-# Este template cria os seguintes recursos:
-## 1 VPC e 1 Subnet dentro da mesma
-## 1 instância de computação ECS Linux
-## 1 Elastic IP, associado à instância, para conexão à mesma pela Internet
-## 1 security group, liberando acesso originado da Internet para HTTP (TCP 80) e SSH (TCP 22)
-## 1 keypar (apenas a chave pública) para autenticação por SSH na instância usando a chave privada
 
 variable "vpc_cidr" { # Faixa de endereços da VPC
   default = "10.70.0.0/16"
@@ -39,7 +26,6 @@ resource "huaweicloud_vpc_v1" "vpc_single_instance_1" {
 resource "huaweicloud_vpc_subnet_v1" "subnet_1" {
   vpc_id = huaweicloud_vpc_v1.vpc_single_instance_1.id
   name   = "subnet_1"
-  # Range da subnet e endereço do gateway são calculados automaticamente a partir da VPC
   cidr       = cidrsubnet(huaweicloud_vpc_v1.vpc_single_instance_1.cidr, 8, 1)
   gateway_ip = cidrhost(cidrsubnet(huaweicloud_vpc_v1.vpc_single_instance_1.cidr, 8, 1), 1)
 
@@ -75,6 +61,16 @@ resource "huaweicloud_networking_secgroup_rule_v2" "secrule_http" {
   security_group_id = huaweicloud_networking_secgroup_v2.secgroup_http_and_ssh.id
 }
 
+resource "huaweicloud_networking_secgroup_rule_v2" "arango-web" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 8529
+  port_range_max    = 8529
+  remote_ip_prefix  = "0.0.0.0/0"
+  security_group_id = huaweicloud_networking_secgroup_v2.secgroup_http_and_ssh.id
+}
+
 output "instance_internal_ip_addr" {
   value = huaweicloud_compute_instance_v2.test-server-vpc.network[0].fixed_ip_v4
 }
@@ -96,7 +92,8 @@ resource "huaweicloud_compute_keypair_v2" "kp_1" {
 resource "huaweicloud_compute_instance_v2" "test-server-vpc" {
   name = "test-server-terraform-vpc"
   # image_id = "cbe0df31-1150-488a-a9b2-612c745e1be0"
-  image_name        = "Ubuntu 20.04 server 64bit"
+  # image_name        = "Ubuntu 20.04 server 64bit"
+  image_name        = "ArangoDB"
   flavor_name       = "c3.large.2"
   availability_zone = "${var.region}a"
   key_pair          = huaweicloud_compute_keypair_v2.kp_1.name
@@ -105,15 +102,6 @@ resource "huaweicloud_compute_instance_v2" "test-server-vpc" {
   network {
     uuid = huaweicloud_vpc_subnet_v1.subnet_1.id
   }
-
-  # Troubleshooting logs are /var/log/cloud-init*
-  user_data = <<-EOT
-    timedatectl set-timezone America/Sao_Paulo
-    echo "Hello, the time is now $(date -R)" | tee /output.txt
-    apt-get update
-    apt-get install nginx --yes
-    echo "<h1>Hello from Nginx</h1><br>My hostname is $(hostname)"> /var/www/html/index.html
-  EOT
 
   tags = {
     terraform = "true" # exemplo de tag
@@ -133,9 +121,9 @@ resource "huaweicloud_vpc_eip_v1" "eip_1" {
   }
   bandwidth {
     name        = "test_bw"
-    charge_mode = "traffic" # cobrança por tráfego de dados ("traffic") ou reserva de banda ("bandwidth")
-    share_type  = "PER"     # Banda dedicada ("PER") ou compartilhada ("WHOLE") com outras instâncias
-    size        = 1         # Banda em Mbps (de 1 up até 300)
+    charge_mode = "traffic"
+    share_type  = "PER"
+    size        = 1
   }
 }
 
@@ -158,14 +146,6 @@ resource "null_resource" "preparation" {
   provisioner "remote-exec" {
     inline = [
       "mkdir /root/arangodb2",
-      # "cd arangodb/",
-      # "curl -OL https://download.arangodb.com/arangodb37/DEBIAN/Release.key",
-      # "sudo apt-key add - < Release.key",
-      # "echo 'deb https://download.arangodb.com/arangodb37/DEBIAN/ /' | sudo tee /etc/apt/sources.list.d/arangodb.list",
-      # "sudo apt-get install apt-transport-https",
-      # "sudo apt-get update",
-      # "sudo apt-get install arangodb3=3.7.3-1",
-      # "sudo apt-get install arangodb3-dbg=3.7.3-1",
     ]
   }
   provisioner "local-exec" {
