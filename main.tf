@@ -16,7 +16,7 @@ variable "region" {
 
 # https://www.terraform.io/docs/providers/huaweicloud/r/vpc_v1.html
 resource "huaweicloud_vpc_v1" "vpc_single_instance_1" {
-  # region = 
+  region = var.region
   name = "vpc_single_instance_1"
   cidr = var.vpc_cidr
 }
@@ -32,7 +32,7 @@ resource "huaweicloud_vpc_subnet_v1" "subnet_1" {
   # Internal DNS servers
   ## https://support.huaweicloud.com/intl/en-us/dns_faq/dns_faq_002.html
   primary_dns   = "100.125.1.250"
-  secondary_dns = "100.125.3.250"
+  secondary_dns = "100.125.128.250"
 }
 
 # https://www.terraform.io/docs/providers/huaweicloud/r/networking_secgroup_v2.html
@@ -120,10 +120,10 @@ resource "huaweicloud_vpc_eip_v1" "eip_1" {
     port_id = huaweicloud_compute_instance_v2.test-server-vpc.network[0].port
   }
   bandwidth {
-    name        = "test_bw"
-    charge_mode = "traffic"
+    name        = "demo_bandwidth"
+    charge_mode = "bandwidth"
     share_type  = "PER"
-    size        = 1
+    size        = 5
   }
 }
 
@@ -138,10 +138,6 @@ resource "null_resource" "preparation" {
     agent       = false
   }
 
-  # provisioner "file" {
-  #   source      = "./tfvars"
-  #   destination = "/tmp/"
-  # }
 
   provisioner "remote-exec" {
     inline = [
